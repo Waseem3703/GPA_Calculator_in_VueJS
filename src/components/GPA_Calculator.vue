@@ -1,5 +1,4 @@
 <template>
-  <!-- Full‑page flex wrapper -->
   <div class="page">
     <div class="calculator">
       <h2>🎓 Weighted Grade Calculator</h2>
@@ -8,19 +7,15 @@
         <div v-for="(item, key) in scores" :key="key" class="section">
           <h3>{{ keyLabels[key] }}</h3>
 
-          <!-- Repeating inputs (quizzes & assignments) -->
           <template v-if="Array.isArray(item)">
-            <div
-              v-for="(entry, index) in item"
-              :key="index"
-              class="input-group"
-            >
+            <div v-for="(entry, index) in item" :key="index" class="input-group">
               <label>Total {{ keyLabels[key] }} {{ index + 1 }}:</label>
               <input
                 type="number"
                 v-model.number="scores[key][index].total"
                 min="0"
                 placeholder="Total"
+                @focus="clearZero($event)"
               />
 
               <label>Obtained:</label>
@@ -29,11 +24,11 @@
                 v-model.number="scores[key][index].obtained"
                 min="0"
                 placeholder="Obtained"
+                @focus="clearZero($event)"
               />
             </div>
           </template>
 
-          <!-- Single inputs (midterm & final) -->
           <template v-else>
             <div class="input-group">
               <label>Total Marks:</label>
@@ -42,6 +37,7 @@
                 v-model.number="scores[key].total"
                 min="0"
                 placeholder="Total"
+                @focus="clearZero($event)"
               />
               <label>Obtained Marks:</label>
               <input
@@ -49,6 +45,7 @@
                 v-model.number="scores[key].obtained"
                 min="0"
                 placeholder="Obtained"
+                @focus="clearZero($event)"
               />
             </div>
           </template>
@@ -76,12 +73,17 @@ export default {
         final: { total: 0, obtained: 0 }
       },
       weights: { quizzes: 12.5, assignments: 12.5, midterm: 25, final: 50 },
-      keyLabels: { quizzes: "Quiz Marks", assignments: "Assignment Marks", midterm: "Midterm Marks", final: "Final Marks" },
+      keyLabels: { quizzes: "Quiz", assignments: "Assignment", midterm: "Midterm", final: "Final" },
       total: null,
       grade: ""
     };
   },
   methods: {
+    clearZero(event) {
+      if (parseFloat(event.target.value) === 0) {
+        event.target.value = "";
+      }
+    },
     calculate() {
       const avg = list =>
         list.reduce((sum, { total, obtained }) => sum + (total ? (obtained / total) * 100 : 0), 0) /
@@ -103,16 +105,15 @@ export default {
           finalPct * this.weights.final) /
         100;
 
-      this.grade =
-        this.total >= 90
-          ? "A"
-          : this.total >= 80
-          ? "B"
-          : this.total >= 70
-          ? "C"
-          : this.total >= 60
-          ? "D"
-          : "F";
+      // Updated Grade Logic
+      if (this.total >= 85) this.grade = "A";
+      else if (this.total >= 80) this.grade = "A-";
+      else if (this.total >= 75) this.grade = "B+";
+      else if (this.total >= 70) this.grade = "B";
+      else if (this.total >= 65) this.grade = "C+";
+      else if (this.total >= 60) this.grade = "C";
+      else if (this.total >= 50) this.grade = "D";
+      else this.grade = "F";
     }
   }
 };
@@ -147,7 +148,6 @@ h2 {
 }
 
 h3 {
-  text-align: center;
   margin-top: 20px;
   font-size: 18px;
   color: #333;
