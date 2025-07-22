@@ -1,62 +1,36 @@
 <template>
   <div class="page">
     <div class="calculator">
-      <h2>🎓 Weighted Grade Calculator</h2>
+      <h2>🎓 GPA Calculator (100 Marks per Subject)</h2>
 
       <div class="input-section">
-        <div v-for="(item, key) in scores" :key="key" class="section">
-          <h3>{{ keyLabels[key] }}</h3>
-
-          <template v-if="Array.isArray(item)">
-            <div v-for="(entry, index) in item" :key="index" class="input-group">
-              <label>Total {{ keyLabels[key] }} {{ index + 1 }}:</label>
-              <input
-                type="number"
-                v-model.number="scores[key][index].total"
-                min="0"
-                placeholder="Total"
-                @focus="clearZero($event)"
-              />
-
-              <label>Obtained:</label>
-              <input
-                type="number"
-                v-model.number="scores[key][index].obtained"
-                min="0"
-                placeholder="Obtained"
-                @focus="clearZero($event)"
-              />
-            </div>
-          </template>
-
-          <template v-else>
-            <div class="input-group">
-              <label>Total Marks:</label>
-              <input
-                type="number"
-                v-model.number="scores[key].total"
-                min="0"
-                placeholder="Total"
-                @focus="clearZero($event)"
-              />
-              <label>Obtained Marks:</label>
-              <input
-                type="number"
-                v-model.number="scores[key].obtained"
-                min="0"
-                placeholder="Obtained"
-                @focus="clearZero($event)"
-              />
-            </div>
-          </template>
+        <div v-for="(subject, index) in subjects" :key="subject.name" class="input-group">
+          <label>{{ subject.name }} ({{ subject.credits }} Cr):</label>
+          <input
+            type="number"
+            v-model.number="subjects[index].marks"
+            min="0"
+            max="100"
+            placeholder="Marks out of 100"
+            @focus="clearZero($event)"
+          />
         </div>
 
-        <button @click="calculate">Calculate Grade</button>
+        <div class="input-group">
+          <label>Previous GPA:</label>
+          <input type="number" v-model.number="previousGPA" step="0.01" min="0" max="4" placeholder="e.g. 3.2" />
+        </div>
+
+        <div class="input-group">
+          <label>Previous Credit Hours:</label>
+          <input type="number" v-model.number="previousCredits" min="0" placeholder="e.g. 15" />
+        </div>
+
+        <button @click="calculateGPA">Calculate New GPA</button>
       </div>
 
-      <div v-if="total !== null" class="result">
-        <p><strong>Total Weighted Marks:</strong> {{ total.toFixed(2) }} / 100</p>
-        <p><strong>Grade:</strong> {{ grade }}</p>
+      <div v-if="newGPA !== null" class="result">
+        <p><strong>New GPA:</strong> {{ newGPA.toFixed(2) }}</p>
       </div>
     </div>
   </div>
@@ -66,16 +40,16 @@
 export default {
   data() {
     return {
-      scores: {
-        quizzes: Array.from({ length: 4 }, () => ({ total: 0, obtained: 0 })),
-        assignments: Array.from({ length: 4 }, () => ({ total: 0, obtained: 0 })),
-        midterm: { total: 0, obtained: 0 },
-        final: { total: 0, obtained: 0 }
-      },
-      weights: { quizzes: 12.5, assignments: 12.5, midterm: 25, final: 50 },
-      keyLabels: { quizzes: "Quiz", assignments: "Assignment", midterm: "Midterm", final: "Final" },
-      total: null,
-      grade: ""
+      subjects: [
+        { name: "SE", credits: 3, marks: 0 },
+        { name: "OOP", credits: 4, marks: 0 },
+        { name: "Calculus", credits: 3, marks: 0 },
+        { name: "DLD", credits: 3, marks: 0 },
+        { name: "Database", credits: 4, marks: 0 }
+      ],
+      previousGPA: 0,
+      previousCredits: 0,
+      newGPA: null
     };
   },
   methods: {
@@ -84,36 +58,31 @@ export default {
         event.target.value = "";
       }
     },
-    calculate() {
-      const avg = list =>
-        list.reduce((sum, { total, obtained }) => sum + (total ? (obtained / total) * 100 : 0), 0) /
-        list.length;
+    getGradePoint(marks) {
+      if (marks >= 85) return 4.0;
+      if (marks >= 80) return 3.7;
+      if (marks >= 75) return 3.3;
+      if (marks >= 70) return 3.0;
+      if (marks >= 65) return 2.7;
+      if (marks >= 60) return 2.3;
+      if (marks >= 50) return 2.0;
+      return 0.0;
+    },
+    calculateGPA() {
+      let currentQualityPoints = 0;
+      let currentCredits = 0;
 
-      const quizAvg = avg(this.scores.quizzes);
-      const assignmentAvg = avg(this.scores.assignments);
-      const midPct = this.scores.midterm.total
-        ? (this.scores.midterm.obtained / this.scores.midterm.total) * 100
-        : 0;
-      const finalPct = this.scores.final.total
-        ? (this.scores.final.obtained / this.scores.final.total) * 100
-        : 0;
+      this.subjects.forEach(subject => {
+        const gradePoint = this.getGradePoint(subject.marks);
+        currentQualityPoints += gradePoint * subject.credits;
+        currentCredits += subject.credits;
+      });
 
-      this.total =
-        (quizAvg * this.weights.quizzes +
-          assignmentAvg * this.weights.assignments +
-          midPct * this.weights.midterm +
-          finalPct * this.weights.final) /
-        100;
+      const previousQualityPoints = this.previousGPA * this.previousCredits;
+      const totalQualityPoints = currentQualityPoints + previousQualityPoints;
+      const totalCredits = currentCredits + this.previousCredits;
 
-      // Updated Grade Logic
-      if (this.total >= 85) this.grade = "A";
-      else if (this.total >= 80) this.grade = "A-";
-      else if (this.total >= 75) this.grade = "B+";
-      else if (this.total >= 70) this.grade = "B";
-      else if (this.total >= 65) this.grade = "C+";
-      else if (this.total >= 60) this.grade = "C";
-      else if (this.total >= 50) this.grade = "D";
-      else this.grade = "F";
+      this.newGPA = totalCredits > 0 ? totalQualityPoints / totalCredits : 0;
     }
   }
 };
@@ -147,12 +116,6 @@ h2 {
   margin-bottom: 25px;
 }
 
-h3 {
-  margin-top: 20px;
-  font-size: 18px;
-  color: #333;
-}
-
 .input-section {
   display: flex;
   flex-direction: column;
@@ -169,13 +132,13 @@ h3 {
 
 label {
   font-size: 14px;
-  width: 130px;
+  width: 180px;
   color: #444;
 }
 
 input {
   padding: 8px 12px;
-  width: 110px;
+  width: 120px;
   font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 8px;
